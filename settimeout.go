@@ -13,10 +13,29 @@ import (
 	"time"
 )
 
-var version = "0.1"
+var version = "0.2"
 var favicon []byte
 var index []byte
 var robots []byte
+
+//plain-text
+var invalidFormat = []byte("invalid_format")
+var done = []byte("done")
+
+//int
+var one = []byte("1")
+
+//json
+var jsonTrue = []byte("true")
+
+//js
+var jsTrue = []byte("_settimeoutio=true")
+
+//css
+var cssShow = []byte(".settimeoutio {display: hide;}")
+
+//callback
+var emptyCallback = []string{""}
 
 func main() {
 	port := flag.String("addr", ":80", "HTTP address to listen on (empty to disable)")
@@ -84,11 +103,11 @@ func socketHandler(conn net.Conn) {
 	}
 	d, err := parseDurationString(str)
 	if err != nil {
-		conn.Write([]byte("invalid_format"))
+		conn.Write(invalidFormat)
 		return
 	}
 	<-time.After(d)
-	conn.Write([]byte("done"))
+	conn.Write(done)
 }
 
 func httpHandler(w http.ResponseWriter, req *http.Request) {
@@ -112,23 +131,51 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 		w.Write(robots)
 	default:
 		d, err := parseDurationString(str)
+		query := req.URL.Query()
+		exists := func(key string) bool { _, ok := query[key]; return ok }
+		var resp []byte
+		var contentType string
+		switch {
+		case exists("js"):
+			resp = jsTrue
+			contentType = "application/javascript"
+		case exists("callback"):
+			callback, _ := query["callback"]
+			if len(callback) == 0 {
+				callback = emptyCallback
+			}
+			resp = []byte(callback[0] + "(true)")
+			contentType = "application/javascript"
+		case exists("int"):
+			resp = one
+			contentType = "text/plain"
+		case exists("json"):
+			resp = jsonTrue
+			contentType = "application/json"
+		case exists("css"):
+			resp = cssShow
+			contentType = "text/css"
+		default:
+			resp = done
+			contentType = "text/plain"
+		}
+		reqHeader.Set("Content-Length", strconv.Itoa(len(resp)))
+		reqHeader.Set("Content-Type", contentType + "; charset=utf-8")
+
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("invalid_format"))
-			return
-		}
-		reqHeader.Set("Content-Length", "4")
-		reqHeader.Set("Content-Type", "text/plain; charset=utf-8")
-		//if they're going to be waiting more than 5 seconds, immediately
-		//send back headers to prevent timeout
-		if d.Seconds() > 3 {
-			//send back headers but not a response yet
-			w.WriteHeader(http.StatusOK)
-			w.(http.Flusher).Flush()
-		}
+		} else if d.Nanoseconds() > 0 {
+			//if they're going to be waiting more than 5 seconds, immediately
+			//send back headers to prevent timeout
+			if d.Seconds() > 3 {
+				//send back headers but not a response yet
+				w.WriteHeader(http.StatusOK)
+				w.(http.Flusher).Flush()
+			}
 
-		<-time.After(d)
-		w.Write([]byte("done"))
+			<-time.After(d)
+		}
+		w.Write(resp)
 	}
 }
 
