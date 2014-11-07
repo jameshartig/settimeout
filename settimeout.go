@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var version = "0.2.3"
+var version = "0.2.4"
 var favicon []byte
 var index []byte
 var robots []byte
@@ -90,7 +90,12 @@ func startHTTPServer(addr string) {
 	if addr == "" {
 		return
 	}
-	err := http.ListenAndServe(addr, http.HandlerFunc(httpHandler))
+	s := &http.Server{
+		Addr:        addr,
+		Handler:     http.HandlerFunc(httpHandler),
+		ReadTimeout: time.Duration(3) * time.Millisecond,
+	}
+	err := s.ListenAndServe()
 	if err != nil {
 		log.Fatal("Failed to start HTTP server: " + err.Error())
 	}
