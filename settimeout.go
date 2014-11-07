@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var version = "0.2"
+var version = "0.2.1"
 var favicon []byte
 var index []byte
 var robots []byte
@@ -32,7 +32,7 @@ var jsonTrue = []byte("true")
 var jsTrue = []byte("_settimeoutio=true")
 
 //css
-var cssShow = []byte(".settimeoutio {display: hide;}")
+var cssShow = []byte(".settimeoutio {display: block;}")
 
 //callback
 var emptyCallback = []string{""}
