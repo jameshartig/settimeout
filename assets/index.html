@@ -10,13 +10,21 @@
         You can also send format modifiers like ?json, ?css, ?callback=test, ?js, ?int.
     </p>
 
-    <h3>Examples</h3>
-    <p><strong>1000</strong> would sleep for 1000 milliseconds</p>
-    <p><strong>10s</strong> would sleep for 10 seconds</p>
-    <p><strong>1h5s</strong> would sleep for 1 hour and 5 seconds</p>
+    <p>&nbsp;</p>
 
+    <h3>HTTP Examples</h3>
+    <p>http://settimeout.io/<strong>5000</strong> would sleep for 5000 milliseconds</p>
+    <p>http://settimeout.io/<strong>10s?css</strong> would sleep for 10 seconds and return css</p>
+    <p>http://settimeout.io/<strong>1h5s</strong> would sleep for 1 hour and 5 seconds</p>
+
+    <h3>Socket Example</h3>
+    <p>To sleep for 5000 milliseconds:</p>
+    <pre>
+    $ (echo "5000" && sleep 0.3) | nc settimeout.io 5103
+    </pre>
+
+    <p>&nbsp;</p>
     <p>Source: <a href="http://github.com/fastest963/settimeout">http://github.com/fastest963/settimeout</a></p>
     <p>By <a href="http://twitter.com/jameshartig">@jameshartig</a></p>
-
 </body>
 </html>
