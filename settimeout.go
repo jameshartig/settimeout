@@ -124,10 +124,13 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 
 	switch str {
 	case "": //index page
+		reqHeader.Set("Cache-Control", "max-age=3600") //1 hour
 		w.Write(index)
 	case "favicon.ico":
+		reqHeader.Set("Cache-Control", "max-age=31536000") //1 year
 		w.Write(favicon)
 	case "robots.txt":
+		reqHeader.Set("Cache-Control", "max-age=31536000") //1 year
 		w.Write(robots)
 	default:
 		d, err := parseDurationString(str)
