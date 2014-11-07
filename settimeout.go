@@ -38,6 +38,8 @@ var cssShow = []byte(".settimeoutio {display: block;}")
 //callback
 var emptyCallback = []string{""}
 
+var serverName = "settimeout/" + version
+
 func main() {
 	port := flag.String("addr", ":80", "HTTP address to listen on (empty to disable)")
 	tcpPort := flag.String("tcpaddr", ":5103", "Socket address to listen on (empty to disable)")
@@ -115,7 +117,7 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 	reqHeader := w.Header()
 	reqHeader.Set("Access-Control-Allow-Origin", "*")
 	reqHeader.Set("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
-	reqHeader.Set("Server", "SetTimeout/"+version)
+	reqHeader.Set("Server", serverName)
 	if req.Method != "GET" && req.Method != "POST" {
 		//assume its the browser just checking headers
 		w.WriteHeader(http.StatusOK)
@@ -170,7 +172,7 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 		}
 
 		reqHeader.Set("Content-Length", strconv.Itoa(len(resp)))
-		reqHeader.Set("Content-Type", contentType + "; charset=utf-8")
+		reqHeader.Set("Content-Type", contentType+"; charset=utf-8")
 
 		if d.Nanoseconds() > 0 {
 			//if they're going to be waiting more than 5 seconds, immediately
