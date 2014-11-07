@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var version = "0.2.2"
+var version = "0.2.3"
 var favicon []byte
 var index []byte
 var robots []byte
@@ -21,6 +21,7 @@ var robots []byte
 //plain-text
 var invalidFormat = []byte("invalid_format")
 var done = []byte("done")
+var empty []byte
 
 //int
 var one = []byte("1")
@@ -162,12 +163,16 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 			resp = done
 			contentType = "text/plain"
 		}
-		reqHeader.Set("Content-Length", strconv.Itoa(len(resp)))
-		reqHeader.Set("Content-Type", contentType + "; charset=utf-8")
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-		} else if d.Nanoseconds() > 0 {
+			resp = empty
+		}
+
+		reqHeader.Set("Content-Length", strconv.Itoa(len(resp)))
+		reqHeader.Set("Content-Type", contentType + "; charset=utf-8")
+
+		if d.Nanoseconds() > 0 {
 			//if they're going to be waiting more than 5 seconds, immediately
 			//send back headers to prevent timeout
 			if d.Seconds() > 3 {
