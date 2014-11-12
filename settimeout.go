@@ -130,7 +130,7 @@ func startStatsTCPServer(addr string) {
 				case "close", "quit", "exit":
 					return
 				case "info":
-					infos := make([]string, 4)
+					infos := make([]string, 5) //+1 for extra \n at the end
 					infos[0] = "Running Requests: " + strconv.Itoa(runningProcs)
 					infos[1] = "Total HTTP Index Requests: " + strconv.Itoa(totalIndexRequests)
 					infos[2] = "Total TCP Requests: " + strconv.Itoa(totalTCPRequests)
