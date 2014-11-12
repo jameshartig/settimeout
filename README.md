@@ -20,6 +20,11 @@ Then you can build as usual.
 ### Usage
 
 ```
-settimeout [-addr=:80] [-tcpaddr=:5103]
+settimeout [-addr=:80] [-tcpaddr=:5103] [-statsaddr=127.0.0.1:5104]
 ```
+To disable HTTP server, TCP server, or the stats socket, just set their respective address to nothing.
 
+To see stats:
+```
+(echo info && sleep 0.1) | nc localhost 5104
+```
