@@ -13,10 +13,11 @@ import (
 	"time"
 )
 
-var version = "0.3.0"
+var version = "0.3.1"
 var favicon []byte
 var index []byte
 var robots []byte
+var readDeadline = 5 * time.Second
 
 var runningProcs = 0
 var totalTimeoutRequests = 0
@@ -25,6 +26,7 @@ var totalIndexRequests = 0
 
 var http10StatusOK = []byte("HTTP/1.0 200 OK\r\n")
 var http11StatusOK = []byte("HTTP/1.1 200 OK\r\n")
+var crlf = []byte("\r\n")
 
 //plain-text
 var invalidFormat = []byte("invalid_format")
@@ -113,7 +115,7 @@ func startStatsTCPServer(addr string) {
 		go func() {
 			defer conn.Close()
 			for {
-				conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+				conn.SetReadDeadline(time.Now().Add(readDeadline))
 				buf := bufio.NewReader(conn)
 				str, err := buf.ReadString('\n')
 				if err != nil {
@@ -149,7 +151,8 @@ func startHTTPServer(addr string) {
 	s := &http.Server{
 		Addr:        addr,
 		Handler:     http.HandlerFunc(httpHandler),
-		ReadTimeout: time.Duration(5) * time.Second,
+		ReadTimeout: readDeadline,
+		//don't set a write deadline since it would set it from NOW which is not what we want
 	}
 	err := s.ListenAndServe()
 	if err != nil {
@@ -158,8 +161,8 @@ func startHTTPServer(addr string) {
 }
 
 func socketHandler(conn net.Conn) {
-	defer conn.Close()
-	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	defer closeAndWait(conn)
+	conn.SetReadDeadline(time.Now().Add(readDeadline))
 	buf := bufio.NewReader(conn)
 	str, err := buf.ReadString('\n')
 	if err != nil {
@@ -171,13 +174,15 @@ func socketHandler(conn net.Conn) {
 		conn.Write(invalidFormat)
 		return
 	}
-	waitForTimeoutClose(conn, d, done)
+	if waitForTimeoutClose(conn, d) {
+		conn.Write(done)
+	}
 }
 
-func waitForTimeoutClose(conn net.Conn, timeout time.Duration, resp []byte) {
+//returns if we should write or not becuase were leaving the writing to the caller
+func waitForTimeoutClose(c net.Conn, timeout time.Duration) bool {
 	if timeout.Nanoseconds() <= 0 {
-		conn.Write(resp)
-		return
+		return true
 	}
 
 	runningProcs++
@@ -190,8 +195,8 @@ func waitForTimeoutClose(conn net.Conn, timeout time.Duration, resp []byte) {
 
 		singleChar := make([]byte, 1)
 		for {
-			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-			_, err := conn.Read(singleChar)
+			c.SetReadDeadline(time.Now().Add(readDeadline))
+			_, err := c.Read(singleChar)
 			//if we got a read error and it wasn't a timeout then close the connection
 			if netErr, ok := err.(net.Error); err != nil && (!ok || !netErr.Timeout()) {
 				select {
@@ -204,10 +209,23 @@ func waitForTimeoutClose(conn net.Conn, timeout time.Duration, resp []byte) {
 	}()
 	select {
 	case <-closedCh:
-		return
+		return false
 	case <-time.After(timeout):
-		conn.Write(done)
+		return true
 	}
+}
+
+func closeAndWait(c net.Conn) {
+	defer c.Close()
+	//from server.go which is from http://golang.org/issue/3595
+	//close writing side first before actually closing the connection
+	//and sending a RST
+	if tcp, ok := c.(*net.TCPConn); ok {
+		tcp.CloseWrite()
+	}
+	//using 500 milliseconds which is from rstAvoidanceDelay in server.go
+	//rough estimate at the longest latency we'll have around the world
+	time.Sleep(500 * time.Millisecond)
 }
 
 func httpHandler(w http.ResponseWriter, req *http.Request) {
@@ -284,7 +302,7 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		defer conn.Close()
+		defer closeAndWait(conn)
 
 		reqHeader.Set("Content-Length", strconv.Itoa(len(resp)))
 		reqHeader.Set("Connection", "close")
@@ -296,13 +314,17 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 		}
 		bufrw.Write(statusLine)
 		reqHeader.Write(bufrw)
+		bufrw.Write(crlf)
 
 		//if they're going to be waiting more than 3 seconds immediately
 		//send back headers to prevent timeout
 		if d.Seconds() > 3 {
 			bufrw.Flush()
 		}
-		waitForTimeoutClose(conn, d, resp)
+		if waitForTimeoutClose(conn, d) {
+			bufrw.Write(resp)
+			bufrw.Flush()
+		}
 	}
 }
 
