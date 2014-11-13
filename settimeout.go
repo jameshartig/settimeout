@@ -13,42 +13,52 @@ import (
 	"time"
 )
 
-var version = "0.3.1"
-var favicon []byte
-var index []byte
-var robots []byte
-var readDeadline = 5 * time.Second
+var (
+	version      = "0.3.3"
+	serverName   = "settimeout/" + version
+	favicon      []byte
+	index        []byte
+	robots       []byte
+	readDeadline = 5 * time.Second
 
-var runningProcs = 0
-var totalTimeoutRequests = 0
-var totalTCPRequests = 0
-var totalIndexRequests = 0
+	incrStatsCh chan string
+	decrStatsCh chan string
+	readStatsCh chan *statReadReply
 
-var http10StatusOK = []byte("HTTP/1.0 200 OK\r\n")
-var http11StatusOK = []byte("HTTP/1.1 200 OK\r\n")
-var crlf = []byte("\r\n")
+	runningProcs         = "runningProcs"
+	totalTimeoutRequests = "totalTimeoutRequests"
+	totalTCPRequests     = "totalTCPRequests"
+	totalIndexRequests   = "totalIndexRequests"
 
-//plain-text
-var invalidFormat = []byte("invalid_format")
-var done = []byte("done")
-var invalidCommand = []byte("Unknown command. Type 'info'\n")
+	http10StatusOK = []byte("HTTP/1.0 200 OK\r\n")
+	http11StatusOK = []byte("HTTP/1.1 200 OK\r\n")
+	crlf           = []byte("\r\n")
 
-//int
-var one = []byte("1")
+	//plain-text
+	invalidFormat  = []byte("invalid_format")
+	done           = []byte("done")
+	invalidCommand = []byte("Unknown command. Type 'info'\n")
 
-//json
-var jsonTrue = []byte("true")
+	//int
+	one = []byte("1")
 
-//js
-var jsTrue = []byte("_settimeoutio=true")
+	//json
+	jsonTrue = []byte("true")
 
-//css
-var cssShow = []byte(".settimeoutio {display: block;}")
+	//js
+	jsTrue = []byte("_settimeoutio=true")
 
-//callback
-var emptyCallback = []string{""}
+	//css
+	cssShow = []byte(".settimeoutio {display: block;}")
 
-var serverName = "settimeout/" + version
+	//callback
+	emptyCallback = []string{""}
+)
+
+type statReadReply struct {
+	stat  string
+	retCh chan int
+}
 
 func main() {
 	addr := flag.String("addr", ":80", "HTTP address to listen on (empty to disable)")
@@ -70,6 +80,11 @@ func main() {
 		log.Fatal("Failed to read robots.txt: " + err.Error())
 	}
 
+	incrStatsCh = make(chan string)
+	decrStatsCh = make(chan string)
+	readStatsCh = make(chan *statReadReply)
+
+	go statsInterface()
 	go startHTTPServer(*addr)
 	go startTCPServer(*tcpAddr)
 	go startStatsTCPServer(*statsAddr)
@@ -78,6 +93,43 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
+}
+
+func statsInterface() {
+	stats := make(map[string]int)
+	var (
+		incrName, decrName string
+		read               *statReadReply
+		ok                 bool
+	)
+	for {
+		select {
+		case incrName = <-incrStatsCh:
+			stats[incrName]++
+		case decrName = <-decrStatsCh:
+			if _, ok = stats[decrName]; !ok {
+				log.Println("Tried to decrement " + decrName + " but that didn't exist in map yet")
+			} else {
+				stats[decrName]--
+			}
+		case read = <-readStatsCh:
+			read.retCh <- stats[read.stat]
+		}
+	}
+}
+
+func incrStat(stat string) {
+	incrStatsCh <- stat
+}
+
+func decrStat(stat string) {
+	decrStatsCh <- stat
+}
+
+func readStat(stat string) int {
+	reply := &statReadReply{stat, make(chan int)}
+	readStatsCh <- reply
+	return <-reply.retCh
 }
 
 func startTCPServer(addr string) {
@@ -131,10 +183,10 @@ func startStatsTCPServer(addr string) {
 					return
 				case "info":
 					infos := make([]string, 5) //+1 for extra \n at the end
-					infos[0] = "Running Requests: " + strconv.Itoa(runningProcs)
-					infos[1] = "Total HTTP Index Requests: " + strconv.Itoa(totalIndexRequests)
-					infos[2] = "Total TCP Requests: " + strconv.Itoa(totalTCPRequests)
-					infos[3] = "Total HTTP Timeout Requests: " + strconv.Itoa(totalTimeoutRequests)
+					infos[0] = "Running Requests: " + strconv.Itoa(readStat(runningProcs))
+					infos[1] = "Total HTTP Index Requests: " + strconv.Itoa(readStat(totalIndexRequests))
+					infos[2] = "Total TCP Requests: " + strconv.Itoa(readStat(totalTCPRequests))
+					infos[3] = "Total HTTP Timeout Requests: " + strconv.Itoa(readStat(totalTimeoutRequests))
 					conn.Write([]byte(strings.Join(infos, "\n")))
 				default:
 					conn.Write(invalidCommand)
@@ -168,7 +220,7 @@ func socketHandler(conn net.Conn) {
 	if err != nil {
 		return
 	}
-	totalTCPRequests++
+	incrStat(totalTCPRequests)
 	d, err := parseDurationString(str)
 	if err != nil {
 		conn.Write(invalidFormat)
@@ -180,18 +232,15 @@ func socketHandler(conn net.Conn) {
 }
 
 //returns if we should write or not becuase were leaving the writing to the caller
-func waitForTimeoutClose(c net.Conn, timeout time.Duration) bool {
+func waitForTimeoutClose(c net.Conn, timeout time.Duration) (shouldWrite bool) {
 	if timeout.Nanoseconds() <= 0 {
-		return true
+		shouldWrite = true
+		return
 	}
 
-	runningProcs++
+	incrStat(runningProcs)
 	closedCh := make(chan int)
 	go func() {
-
-		defer func() {
-			runningProcs--
-		}()
 
 		singleChar := make([]byte, 1)
 		for {
@@ -209,10 +258,11 @@ func waitForTimeoutClose(c net.Conn, timeout time.Duration) bool {
 	}()
 	select {
 	case <-closedCh:
-		return false
 	case <-time.After(timeout):
-		return true
+		shouldWrite = true
 	}
+	decrStat(runningProcs)
+	return
 }
 
 func closeAndWait(c net.Conn) {
@@ -244,7 +294,7 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 	case "": //index page
 		reqHeader.Set("Cache-Control", "max-age=3600") //1 hour
 		w.Write(index)
-		totalIndexRequests++
+		incrStat(totalIndexRequests)
 	case "favicon.ico":
 		reqHeader.Set("Cache-Control", "max-age=31536000") //1 year
 		w.Write(favicon)
@@ -252,7 +302,7 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 		reqHeader.Set("Cache-Control", "max-age=31536000") //1 year
 		w.Write(robots)
 	default:
-		totalTimeoutRequests++
+		incrStat(totalTimeoutRequests)
 		d, err := parseDurationString(str)
 		query := req.URL.Query()
 		exists := func(key string) bool { _, ok := query[key]; return ok }
