@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	version      = "0.3.3"
+	version      = "0.3.5"
 	serverName   = "settimeout/" + version
 	favicon      []byte
 	index        []byte
@@ -64,6 +64,9 @@ func main() {
 	addr := flag.String("addr", ":80", "HTTP address to listen on (empty to disable)")
 	tcpAddr := flag.String("tcpaddr", ":5103", "Socket address to listen on (empty to disable)")
 	statsAddr := flag.String("statsaddr", "127.0.0.1:5104", "Socket address to listen on for stats (empty to disable)")
+	httpsAddr := flag.String("httpsaddr", ":443", "HTTPS address to listen on (empty to disable)")
+	httpsCrt := flag.String("httpscrt", "", "HTTPS Server Crt file")
+	httpsKey := flag.String("httpskey", "", "HTTPS Server Key file")
 	flag.Parse()
 
 	var err error
@@ -86,6 +89,7 @@ func main() {
 
 	go statsInterface()
 	go startHTTPServer(*addr)
+	go startHTTPSServer(*httpsAddr, *httpsCrt, *httpsKey)
 	go startTCPServer(*tcpAddr)
 	go startStatsTCPServer(*statsAddr)
 
@@ -209,6 +213,28 @@ func startHTTPServer(addr string) {
 	err := s.ListenAndServe()
 	if err != nil {
 		log.Fatal("Failed to start HTTP server: " + err.Error())
+	}
+}
+
+func startHTTPSServer(addr, crtFile, keyFile string) {
+	if addr == "" {
+		return
+	}
+	if crtFile == "" {
+		log.Fatal("Cannot start HTTPS server without httpscrt")
+	}
+	if keyFile == "" {
+		log.Fatal("Cannot start HTTPS server without httpskey")
+	}
+	s := &http.Server{
+		Addr:        addr,
+		Handler:     http.HandlerFunc(httpHandler),
+		ReadTimeout: readDeadline,
+		//don't set a write deadline since it would set it from NOW which is not what we want
+	}
+	err := s.ListenAndServeTLS(crtFile, keyFile)
+	if err != nil {
+		log.Fatal("Failed to start HTTPS server: " + err.Error())
 	}
 }
 
