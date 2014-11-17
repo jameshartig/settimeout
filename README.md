@@ -26,5 +26,5 @@ To disable HTTP, HTTPS, or TCP server, or the stats socket, just set their respe
 
 To see stats:
 ```
-(echo info && sleep 0.1) | nc localhost 5104
+(echo info && sleep 0.1) | nc 127.0.0.1 5104
 ```
