@@ -64,7 +64,7 @@ func main() {
 	addr := flag.String("addr", ":80", "HTTP address to listen on (empty to disable)")
 	tcpAddr := flag.String("tcpaddr", ":5103", "Socket address to listen on (empty to disable)")
 	statsAddr := flag.String("statsaddr", "127.0.0.1:5104", "Socket address to listen on for stats (empty to disable)")
-	httpsAddr := flag.String("httpsaddr", ":443", "HTTPS address to listen on (empty to disable)")
+	httpsAddr := flag.String("httpsaddr", "", "HTTPS address to listen on (empty to disable)")
 	httpsCrt := flag.String("httpscrt", "", "HTTPS Server Crt file")
 	httpsKey := flag.String("httpskey", "", "HTTPS Server Key file")
 	flag.Parse()
