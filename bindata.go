@@ -146,9 +146,10 @@ func AssetNames() []string {
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() ([]byte, error){
 	"assets/favicon.ico": assets_favicon_ico,
-	"assets/index.html": assets_index_html,
-	"assets/robots.txt": assets_robots_txt,
+	"assets/index.html":  assets_index_html,
+	"assets/robots.txt":  assets_robots_txt,
 }
+
 // AssetDir returns the file names below a certain
 // directory embedded in the file by go-bindata.
 // For example if you run go-bindata on data/... and data contains the
@@ -185,14 +186,12 @@ func AssetDir(name string) ([]string, error) {
 }
 
 type _bintree_t struct {
-	Func func() ([]byte, error)
+	Func     func() ([]byte, error)
 	Children map[string]*_bintree_t
 }
+
 var _bintree = &_bintree_t{nil, map[string]*_bintree_t{
-	"assets/favicon.ico": &_bintree_t{assets_favicon_ico, map[string]*_bintree_t{
-	}},
-	"assets/index.html": &_bintree_t{assets_index_html, map[string]*_bintree_t{
-	}},
-	"assets/robots.txt": &_bintree_t{assets_robots_txt, map[string]*_bintree_t{
-	}},
+	"assets/favicon.ico": &_bintree_t{assets_favicon_ico, map[string]*_bintree_t{}},
+	"assets/index.html":  &_bintree_t{assets_index_html, map[string]*_bintree_t{}},
+	"assets/robots.txt":  &_bintree_t{assets_robots_txt, map[string]*_bintree_t{}},
 }}
