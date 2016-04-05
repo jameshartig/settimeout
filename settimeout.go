@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"flag"
 	"log"
 	"net"
@@ -14,7 +15,7 @@ import (
 )
 
 var (
-	version      = "0.3.5"
+	version      = "0.4.0"
 	serverName   = "settimeout/" + version
 	favicon      []byte
 	index        []byte
@@ -51,6 +52,9 @@ var (
 	//css
 	cssShow = []byte(".settimeoutio {display: block;}")
 
+	//gif
+	gifPixel []byte
+
 	//callback
 	emptyCallback = []string{""}
 )
@@ -58,6 +62,11 @@ var (
 type statReadReply struct {
 	stat  string
 	retCh chan int
+}
+
+func init() {
+	// from http://probablyprogramming.com/2009/03/15/the-tiniest-gif-ever
+	gifPixel, _ = base64.StdEncoding.DecodeString(`R0lGODlhAQABAIABAP///wAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==`)
 }
 
 func main() {
@@ -354,6 +363,9 @@ func httpHandler(w http.ResponseWriter, req *http.Request) {
 		case exists("css"):
 			resp = cssShow
 			contentType = "text/css"
+		case exists("gif"):
+			resp = gifPixel
+			contentType = "image/gif"
 		default:
 			resp = done
 			contentType = "text/plain"
