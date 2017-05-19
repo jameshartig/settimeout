@@ -6,9 +6,8 @@
     <h2>setTimeout as a Service</h2>
     <p>
         Specify the amount of time (defaults to milliseconds) you want the server to sleep before responding.<br />
-        Supports HTTP requests with the time being the path or socket connections on port 5103 with the time sent followed by a newline.<br />
-        You can also send format modifiers like ?json, ?css, ?callback=test, ?js, ?int, ?gif. Feel free to use whatever subdomain you want too,<br />
-        in case you're hitting the max parallel connections in a browser.
+        Supports HTTP requests with the time being the path<br />
+        You can also send format modifiers like ?json, ?css, ?callback=test, ?js, ?int, ?gif.
     </p>
 
     <h3>Use Cases</h3>
@@ -24,12 +23,6 @@
     <p>http://settimeout.io/<strong>5000</strong> would sleep for 5000 milliseconds</p>
     <p>http://settimeout.io/<strong>10s?css</strong> would sleep for 10 seconds and return css</p>
     <p>http://settimeout.io/<strong>1h5s</strong> would sleep for 1 hour and 5 seconds</p>
-
-    <h3>Socket Example</h3>
-    <p>To sleep for 5000 milliseconds:</p>
-    <pre>
-    $ (echo "5000" && sleep 0.3) | nc settimeout.io 5103
-    </pre>
 
     <p>&nbsp;</p>
 
