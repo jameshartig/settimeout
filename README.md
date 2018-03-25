@@ -13,7 +13,7 @@ go build
 ### Usage
 
 ```
-settimeout [-addr=:80]
+settimeout
 ```
 
 ### Other stuff

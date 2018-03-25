@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,6 +42,7 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		handler(fsHandler.ServeHTTP, w, r)
 	})
+	log.Print("Listening on :51004")
 	panic(http.ListenAndServe(":51004", nil))
 }
 
