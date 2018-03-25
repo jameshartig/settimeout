@@ -38,7 +38,7 @@ var (
 func main() {
 	// from http://probablyprogramming.com/2009/03/15/the-tiniest-gif-ever
 	gifPixel, _ = base64.StdEncoding.DecodeString(`R0lGODlhAQABAIABAP///wAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==`)
-	fsHandler := http.FileServer(http.Dir("/var/assets"))
+	fsHandler := http.FileServer(http.Dir("./assets"))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		handler(fsHandler.ServeHTTP, w, r)
 	})
