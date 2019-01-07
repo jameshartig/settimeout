@@ -1,0 +1,12 @@
+{
+    "version": 2,
+    "name": "settimeout",
+    "builds": [
+        { "src": "*.go", "use": "@now/go" }
+    ],
+    "routes": [
+        { "src": "/.*", "dest": "settimeout.go" }
+    ],
+    "alias": ["settimeout.io"],
+    "public": true
+}

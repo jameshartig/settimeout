@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/base64"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	// we must include this here until https://github.com/zeit/now-builders/issues/127
+	_ "github.com/fastest963/settimeout/packrd"
+	packr "github.com/gobuffalo/packr/v2"
 )
 
 var (
@@ -29,21 +32,27 @@ var (
 	cssShow = []byte(".settimeoutio {display: block;}")
 
 	//gif
-	gifPixel []byte
+	gifPixel = func() []byte {
+		// from http://probablyprogramming.com/2009/03/15/the-tiniest-gif-ever
+		b, err := base64.StdEncoding.DecodeString(`R0lGODlhAQABAIABAP///wAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==`)
+		if err != nil {
+			panic(err)
+		}
+		return b
+	}()
 
 	//callback
 	emptyCallback = []string{""}
+
+	fsHandler = func() http.Handler {
+		box := packr.New("assets", "./assets")
+		return http.FileServer(box)
+	}()
 )
 
-func main() {
-	// from http://probablyprogramming.com/2009/03/15/the-tiniest-gif-ever
-	gifPixel, _ = base64.StdEncoding.DecodeString(`R0lGODlhAQABAIABAP///wAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==`)
-	fsHandler := http.FileServer(http.Dir("./assets"))
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handler(fsHandler.ServeHTTP, w, r)
-	})
-	log.Print("Listening on :51004")
-	panic(http.ListenAndServe(":51004", nil))
+// Handler accepts an incoming http request and handles it
+func Handler(w http.ResponseWriter, r *http.Request) {
+	handler(fsHandler.ServeHTTP, w, r)
 }
 
 func handler(next http.HandlerFunc, w http.ResponseWriter, req *http.Request) {
